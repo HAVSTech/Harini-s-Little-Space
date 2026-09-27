@@ -28,7 +28,7 @@ function App(){
   const fertileEnd=latest?Math.max(fertileStart,averageLength-13):0;
   const inFertileWindow=latest&&currentDay>=fertileStart&&currentDay<=fertileEnd;
   const pregnancyAlert=latest&&inFertileWindow
-    ? {level:"attention",title:"Higher pregnancy possibility",text:`You are around cycle day ${currentDay}, which falls within the estimated fertile window based on her logged cycles. Calendar estimates cannot confirm ovulation or rule out pregnancy.`}
+    ? {level:"attention",title:"Higher pregnancy possibility",text:`You are around cycle day ${currentDay}, which falls within the estimated fertile window based on your logged cycles. Calendar estimates cannot confirm ovulation or rule out pregnancy.`}
     : latest&&currentDay>=fertileEnd+1&&currentDay<=averageLength-8
     ? {level:"notice",title:"Fertile window may be nearby",text:"The estimated fertile window may be approaching or recently passed. Cycle timing can shift from month to month."}
     : null;
@@ -110,9 +110,9 @@ function App(){
       {tab==="today"?<>
         <section className="hero" id="today">
           <div><div className="eyebrow"><Sparkles size={14}/> good evening, Harini</div><h1>Your body has a rhythm.<br/><span>Let’s move with it.</span></h1><p className="hero-text">A soft little space to notice your cycle, check in with yourself, and keep the everyday things that matter close.</p>
-          {latest?<div className="hero-meta"><div><span>Today</span><strong>{formatLong(todayString())}</strong></div><div><span>Next period · estimated</span><strong>{formatDate(nextPeriod.toISOString().slice(0,10))}</strong></div></div>:<button className="primary-btn" onClick={openLogger}><Plus size={16}/> Log her first period</button>}</div>
-          <div className="cycle-card"><div className="card-top"><span>Current rhythm</span>{latest&&<span className="phase-chip">{phase.icon} {phase.name}</span>}</div>
-          {latest?<><div className="cycle-ring" style={{"--progress":(Math.min(currentDay/Math.max(cycleLength,1),1)*360)+"deg"}}><div className="ring-inner"><strong>{currentDay}</strong><span>cycle day</span></div></div><p>{phase.note}</p></>:<div className="empty-cycle"><div>🌷</div><strong>Your cycle starts here.</strong><p>Log the first day of her period to begin tracking.</p><button className="secondary-btn" onClick={openLogger}>Add period</button></div>}</div>
+          {latest?<div className="hero-meta"><div><span>Today</span><strong>{formatLong(todayString())}</strong></div><div><span>Next period · estimated</span><strong>{formatDate(nextPeriod.toISOString().slice(0,10))}</strong></div></div>:<button className="primary-btn" onClick={openLogger}><Plus size={16}/> Log your first period</button>}</div>
+          <div className="cycle-card"><div className="card-top"><span>Your current rhythm</span>{latest&&<span className="phase-chip">{phase.icon} {phase.name}</span>}</div>
+          {latest?<><div className="cycle-ring" style={{"--progress":(Math.min(currentDay/Math.max(cycleLength,1),1)*360)+"deg"}}><div className="ring-inner"><strong>{currentDay}</strong><span>cycle day</span></div></div><p>{phase.note}</p></>:<div className="empty-cycle"><div>🌷</div><strong>Your cycle starts here.</strong><p>Log the first day of your period to begin tracking.</p><button className="secondary-btn" onClick={openLogger}>Add period</button></div>}</div>
         </section>
 
         {pregnancyAlert&&<section className={`pregnancy-alert ${pregnancyAlert.level}`}><div className="pregnancy-alert-icon">⚠️</div><div><span className="kicker">Cycle awareness</span><h2>{pregnancyAlert.title}</h2><p>{pregnancyAlert.text}</p><small>For pregnancy prevention, do not rely on calendar predictions alone. Consider a reliable contraceptive method.</small></div></section>}
@@ -123,17 +123,17 @@ function App(){
           <div className="panel"><label>Anything to note?</label><div className="symptom-row">{symptoms.map(x=><button key={x} className={selectedSymptoms.includes(x)?"symptom active":"symptom"} onClick={()=>setSelectedSymptoms(s=>s.includes(x)?s.filter(v=>v!==x):[...s,x])}>{x}</button>)}</div><div className="note">{selectedSymptoms.length?selectedSymptoms.length+" thing"+(selectedSymptoms.length>1?"s":"")+" logged today.":"Nothing logged yet."}</div></div>
         </div></section>
 
-        <section className="section quick-history"><div className="heading"><div><span className="kicker">Recent cycles</span><h2>A record that grows with her.</h2></div><button className="text-btn" onClick={()=>nav("history")}>View all <ChevronRight size={15}/></button></div>
+        <section className="section quick-history"><div className="heading"><div><span className="kicker">Recent cycles</span><h2>A record that grows with you.</h2></div><button className="text-btn" onClick={()=>nav("history")}>View all <ChevronRight size={15}/></button></div>
           {cycles.length?<div className="recent-list">{cycles.slice(0,3).map((c,i)=><div className="recent-row" key={c.id}><div className="recent-month">{new Intl.DateTimeFormat("en-IN",{month:"short"}).format(new Date(c.period_start+"T00:00:00"))}<strong>{new Date(c.period_start+"T00:00:00").getDate()}</strong></div><div className="recent-main"><strong>{formatDate(c.period_start)}{c.period_start_time&&<em className="history-time">{new Intl.DateTimeFormat("en-IN",{hour:"numeric",minute:"2-digit",hour12:true}).format(new Date(`1970-01-01T${c.period_start_time}`))}</em>}</strong><span>{c.period_end?"Ended "+formatDate(c.period_end):"Currently logged"}</span></div><div className="recent-length">{cycles[i+1]?daysBetween(cycles[i+1].period_start,c.period_start)+" days":i===0?"Current":"·"}</div></div>)}</div>:<div className="empty-panel">No cycle history yet. Add the first period to start building her history.</div>}
         </section>
       </>:<section className="history-page">
-        <div className="history-header"><div><span className="kicker">Her rhythm</span><h1>Cycle history</h1><p>A quiet record of every month.</p></div><button className="primary-btn" onClick={openLogger}><Plus size={16}/> Log period</button></div>
+        <div className="history-header"><div><span className="kicker">Your rhythm</span><h1>Cycle history</h1><p>A quiet record of your cycle, month by month.</p></div><button className="primary-btn" onClick={openLogger}><Plus size={16}/> Log period</button></div>
         {loading ? (
-          <div className="loading"><RefreshCw className="spin" size={20}/> Loading her history…</div>
+          <div className="loading"><RefreshCw className="spin" size={20}/> Loading your history…</div>
         ) : cycles.length === 0 ? (
           <div className="empty-panel large">
             <div className="empty-icon">🌷</div>
-            <h2>Her story starts here.</h2>
+            <h2>Your story starts here.</h2>
             <p>Once you log a period, each month will appear here with its dates and cycle length.</p>
             <button className="secondary-btn" onClick={openLogger}>Log first period</button>
           </div>
@@ -144,7 +144,7 @@ function App(){
                 <div className="chart-heading">
                   <div>
                     <span className="kicker">Visual history</span>
-                    <h2>Her cycle, month by month · visual rhythm.</h2>
+                    <h2>Your cycle, month by month · visual rhythm.</h2>
                   </div>
                   <div className="chart-average">
                     <span>Average</span>
@@ -219,9 +219,9 @@ function App(){
       </section>}
     </main>
 
-    <footer className="footer"><span>Made with a little extra care for Harini ♡</span><span>Harini's Little Space · {new Date().getFullYear()}</span></footer>
+    <footer className="footer"><span>Made with a little extra care for you ♡</span><span>Harini's Little Space · {new Date().getFullYear()}</span></footer>
 
-    {showLogger&&<div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setShowLogger(false)}}><form className="modal" onSubmit={addCycle}><div className="modal-header"><div><span className="kicker">Monthly check-in</span><h2>Log her period</h2></div><button type="button" className="icon-btn" onClick={()=>setShowLogger(false)}><X size={17}/></button></div><p className="modal-copy">Add the actual period dates. Her cycle history and future estimates will update automatically.</p><label><span>Period started</span><input required type="date" value={periodStart} max={todayString()} onChange={e=>setPeriodStart(e.target.value)}/></label><label><span>Started at <em>optional</em></span><input type="time" value={periodStartTime} onChange={e=>setPeriodStartTime(e.target.value)}/></label><label><span>Period ended <em>optional</em></span><input type="date" value={periodEnd} max={todayString()} min={periodStart||undefined} onChange={e=>setPeriodEnd(e.target.value)}/></label><div className="modal-actions"><button type="button" className="secondary-btn" onClick={()=>setShowLogger(false)}>Cancel</button><button className="primary-btn" disabled={saving||!user}>{saving?<><RefreshCw className="spin" size={15}/> Saving…</>:<><Heart size={15}/> Save period</>}</button></div></form></div>}
+    {showLogger&&<div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setShowLogger(false)}}><form className="modal" onSubmit={addCycle}><div className="modal-header"><div><span className="kicker">Monthly check-in</span><h2>Log your period</h2></div><button type="button" className="icon-btn" onClick={()=>setShowLogger(false)}><X size={17}/></button></div><p className="modal-copy">Add the actual period dates. Your cycle history and future estimates will update automatically.</p><label><span>Period started</span><input required type="date" value={periodStart} max={todayString()} onChange={e=>setPeriodStart(e.target.value)}/></label><label><span>Started at <em>optional</em></span><input type="time" value={periodStartTime} onChange={e=>setPeriodStartTime(e.target.value)}/></label><label><span>Period ended <em>optional</em></span><input type="date" value={periodEnd} max={todayString()} min={periodStart||undefined} onChange={e=>setPeriodEnd(e.target.value)}/></label><div className="modal-actions"><button type="button" className="secondary-btn" onClick={()=>setShowLogger(false)}>Cancel</button><button className="primary-btn" disabled={saving||!user}>{saving?<><RefreshCw className="spin" size={15}/> Saving…</>:<><Heart size={15}/> Save period</>}</button></div></form></div>}
   </div>;
 }
 createRoot(document.getElementById("root")).render(<React.StrictMode><App/></React.StrictMode>);
