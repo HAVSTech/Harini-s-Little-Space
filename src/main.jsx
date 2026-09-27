@@ -23,6 +23,7 @@ function App(){
   const cycleLength=latest&&previous?daysBetween(previous.period_start,latest.period_start):28;
   const currentDay=latest?getCycleDay(latest.period_start):0;
   const phase=latest?getPhase(currentDay):getPhase(1);
+  const averageLength=useMemo(()=>{if(cycles.length<2)return cycleLength;const lengths=cycles.slice(0,-1).map((c,i)=>daysBetween(cycles[i+1].period_start,c.period_start)).filter(n=>n>0&&n<100);return lengths.length?Math.round(lengths.reduce((a,b)=>a+b,0)/lengths.length):cycleLength;},[cycles,cycleLength]);
   const fertileStart=latest?Math.max(1,averageLength-19):0;
   const fertileEnd=latest?Math.max(fertileStart,averageLength-13):0;
   const inFertileWindow=latest&&currentDay>=fertileStart&&currentDay<=fertileEnd;
@@ -33,7 +34,6 @@ function App(){
     : null;
   const nextPeriod=latest?new Date(latest.period_start+"T00:00:00"):new Date();
   if(latest)nextPeriod.setDate(nextPeriod.getDate()+cycleLength);
-  const averageLength=useMemo(()=>{if(cycles.length<2)return cycleLength;const lengths=cycles.slice(0,-1).map((c,i)=>daysBetween(cycles[i+1].period_start,c.period_start)).filter(n=>n>0&&n<100);return lengths.length?Math.round(lengths.reduce((a,b)=>a+b,0)/lengths.length):cycleLength;},[cycles,cycleLength]);
   const chartData=useMemo(()=>cycles.slice(0,-1).map((c,i)=>({id:c.id,start:c.period_start,length:daysBetween(cycles[i+1].period_start,c.period_start)})).filter(x=>x.length>0&&x.length<100).reverse().slice(-8),[cycles]);
   const chartMin=chartData.length?Math.max(1,Math.min(...chartData.map(x=>x.length))-4):24;
   const chartMax=chartData.length?Math.max(...chartData.map(x=>x.length),averageLength)+4:32;
