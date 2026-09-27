@@ -53,10 +53,10 @@ function App(){
         if(signInError){if(mounted)setError("Supabase anonymous sign-in is not enabled yet. Enable it in Authentication → Providers → Anonymous Sign-Ins.");setLoading(false);return;}
         currentUser=signIn.data.user;
       }
-      if(mounted){setUser(currentUser);await Promise.all([loadCycles(currentUser.id),loadRelationship(currentUser.id)]);}
+      if(mounted){setUser(currentUser);await Promise.all([loadCycles(),loadRelationship(currentUser.id)]);}
     }
     init();
-    const {data:listener}=supabase.auth.onAuthStateChange((_event,session)=>{if(mounted&&session?.user){setUser(session.user);loadCycles(session.user.id);loadRelationship(session.user.id);}});
+    const {data:listener}=supabase.auth.onAuthStateChange((_event,session)=>{if(mounted&&session?.user){setUser(session.user);loadCycles();loadRelationship(session.user.id);}});
     return()=>{mounted=false;listener.subscription.unsubscribe();};
   },[]);
 
@@ -75,11 +75,11 @@ function App(){
     setSavingIntimacy(false);
   }
 
-  async function loadCycles(userId){
-    const {data,error:queryError}=await supabase.from("period_cycles").select("id,user_id,period_start,period_start_time,period_end,created_at").order("period_start",{ascending:false});
+  async function loadCycles(){
+    const {data,error:queryError}=await supabase.from("shared_period_cycles").select("id,period_start,period_start_time,period_end,created_at").order("period_start",{ascending:false});
     if(queryError){setError(queryError.message);setCycles([]);setLoading(false);return;}
     const existing=data||[];
-    if(existing.length===0 && !localStorage.getItem("hls-history-seeded") && !localStorage.getItem("hls-history-seeding")){
+    if(existing.length===0){
       const historicalCycles=[
         ["2025-02-19",null],["2025-03-17","23:00"],["2025-04-16","04:00"],["2025-05-14","04:30"],
         ["2025-06-13","20:30"],["2025-07-13","22:30"],["2025-08-11","14:26"],["2025-09-08","13:00"],
@@ -87,10 +87,9 @@ function App(){
         ["2026-02-02","13:10"],["2026-03-03","15:30"],["2026-04-02","12:00"],["2026-05-01","19:30"],
         ["2026-06-02","04:50"],["2026-07-02","06:08"],["2026-08-02","21:30"]
       ];
-      const rows=historicalCycles.map(([period_start,period_start_time])=>({user_id:userId,period_start,period_start_time}));
-      localStorage.setItem("hls-history-seeding","true");
-      const {data:seeded,error:seedError}=await supabase.from("period_cycles").insert(rows).select("id,user_id,period_start,period_start_time,period_end,created_at");
-      if(seedError){localStorage.removeItem("hls-history-seeding");setError(seedError.message);setCycles(existing);}else{localStorage.removeItem("hls-history-seeding");localStorage.setItem("hls-history-seeded","true");setCycles((seeded||[]).sort((a,b)=>b.period_start.localeCompare(a.period_start)));}
+      const rows=historicalCycles.map(([period_start,period_start_time])=>({period_start,period_start_time}));
+      const {error:seedError}=await supabase.from("shared_period_cycles").upsert(rows,{onConflict:"period_start,period_start_time,period_end",ignoreDuplicates:true});
+      if(seedError){setError(seedError.message);setCycles(existing);}else{await loadCycles();}
     }else{
       setCycles(existing);
     }
@@ -100,13 +99,13 @@ function App(){
     e.preventDefault();if(!user||!periodStart)return;
     if(periodEnd&&periodEnd<periodStart){setError("Period end date cannot be before the start date.");return;}
     setSaving(true);setError("");
-    const {data,error:insertError}=await supabase.from("period_cycles").insert({user_id:user.id,period_start:periodStart,period_start_time:periodStartTime||null,period_end:periodEnd||null}).select().single();
-    if(insertError)setError(insertError.message);else{setCycles(c=>[data,...c].sort((a,b)=>b.period_start.localeCompare(a.period_start)));setPeriodStart("");setPeriodStartTime("");setPeriodEnd("");setShowLogger(false);setTab("today");}
+    const {data,error:insertError}=await supabase.from("shared_period_cycles").upsert({period_start:periodStart,period_start_time:periodStartTime||null,period_end:periodEnd||null},{onConflict:"period_start,period_start_time,period_end",ignoreDuplicates:true}).select().maybeSingle();
+    if(insertError)setError(insertError.message);else{if(data)setCycles(c=>[data,...c.filter(x=>x.id!==data.id)].sort((a,b)=>b.period_start.localeCompare(a.period_start)));else await loadCycles();setPeriodStart("");setPeriodStartTime("");setPeriodEnd("");setShowLogger(false);setTab("today");}
     setSaving(false);
   }
   async function deleteCycle(id){
     if(!user)return;setDeleting(id);setError("");
-    const {error:deleteError}=await supabase.from("period_cycles").delete().eq("id",id);
+    const {error:deleteError}=await supabase.from("shared_period_cycles").delete().eq("id",id);
     if(deleteError)setError(deleteError.message);else setCycles(c=>c.filter(x=>x.id!==id));setDeleting(null);
   }
   const openLogger=()=>{const now=new Date();setPeriodStart(todayString());setPeriodStartTime(`${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`);setPeriodEnd("");setShowLogger(true);};
