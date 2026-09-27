@@ -49,34 +49,54 @@ using (true);
 -- The old period_cycles table may remain in an existing project as legacy data.
 -- The application no longer reads or writes that table.
 
-create table if not exists public.relationship_stats (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null unique references auth.users(id) on delete cascade,
+create table if not exists public.shared_relationship_stats (
+  id boolean primary key default true check (id = true),
   intimacy_count integer not null default 0 check (intimacy_count >= 0),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
-create index if not exists relationship_stats_user_idx
-  on public.relationship_stats(user_id);
+alter table public.shared_relationship_stats enable row level security;
 
-alter table public.relationship_stats enable row level security;
+grant select, insert, update on table public.shared_relationship_stats to authenticated;
 
-drop policy if exists "Users can view their own relationship stats" on public.relationship_stats;
-create policy "Users can view their own relationship stats"
-on public.relationship_stats for select
+drop policy if exists "Authenticated users can view shared relationship stats" on public.shared_relationship_stats;
+create policy "Authenticated users can view shared relationship stats"
+on public.shared_relationship_stats for select
 to authenticated
-using (auth.uid() = user_id);
+using (true);
 
-drop policy if exists "Users can add their own relationship stats" on public.relationship_stats;
-create policy "Users can add their own relationship stats"
-on public.relationship_stats for insert
+drop policy if exists "Authenticated users can create shared relationship stats" on public.shared_relationship_stats;
+create policy "Authenticated users can create shared relationship stats"
+on public.shared_relationship_stats for insert
 to authenticated
-with check (auth.uid() = user_id);
+with check (true);
 
-drop policy if exists "Users can edit their own relationship stats" on public.relationship_stats;
-create policy "Users can edit their own relationship stats"
-on public.relationship_stats for update
+drop policy if exists "Authenticated users can edit shared relationship stats" on public.shared_relationship_stats;
+create policy "Authenticated users can edit shared relationship stats"
+on public.shared_relationship_stats for update
 to authenticated
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
+using (true)
+with check (true);
+
+insert into public.shared_relationship_stats (id, intimacy_count)
+values (true, (select coalesce(sum(intimacy_count),0) from public.relationship_stats))
+on conflict (id) do nothing;
+
+create or replace function public.increment_shared_intimacy()
+returns integer
+language sql
+security invoker
+set search_path = public
+as $$
+  update public.shared_relationship_stats
+  set intimacy_count = intimacy_count + 1,
+      updated_at = now()
+  where id = true
+  returning intimacy_count;
+$$;
+
+grant execute on function public.increment_shared_intimacy() to authenticated;
+
+-- The old relationship_stats table may remain in an existing project as legacy data.
+-- The application no longer reads or writes that table.
