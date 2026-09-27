@@ -5,13 +5,14 @@ create table if not exists public.period_cycles (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   period_start date not null,
+  period_start_time time,
   period_end date,
   created_at timestamptz not null default now(),
   constraint period_end_after_start check (period_end is null or period_end >= period_start)
 );
 
 create index if not exists period_cycles_user_start_idx
-  on public.period_cycles(user_id, period_start desc);
+  on public.period_cycles(user_id, period_start desc, period_start_time desc);
 
 alter table public.period_cycles enable row level security;
 
