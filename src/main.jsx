@@ -270,6 +270,11 @@ function App(){
               <strong>My birthday</strong>
               <p>Another date that became part of our story.</p>
             </article>
+            <article className="date-memory">
+              <span>1 Jan 2023 · 6:00 AM</span>
+              <strong>Our first selfie & first short outing</strong>
+              <p>A quiet early-morning walk around Spectrum School — one of our first little adventures together.</p>
+            </article>
           </div>
         </section>
 
