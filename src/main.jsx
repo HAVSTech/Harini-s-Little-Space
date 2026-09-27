@@ -103,11 +103,94 @@ function App(){
         </section>
       </>:<section className="history-page">
         <div className="history-header"><div><span className="kicker">Her rhythm</span><h1>Cycle history</h1><p>A quiet record of every month.</p></div><button className="primary-btn" onClick={openLogger}><Plus size={16}/> Log period</button></div>
-        {loading?<div className="loading"><RefreshCw className="spin" size={20}/> Loading her history…</div>:cycles.length===0?<div className="empty-panel large"><div className="empty-icon">🌷</div><h2>Her story starts here.</h2><p>Once you log a period, each month will appear here with its dates and cycle length.</p><button className="secondary-btn" onClick={openLogger}>Log first period</button></div>:
-        <>{chartData.length>0&&<section className="cycle-chart"><div className="chart-heading"><div><span className="kicker">Visual history</span><h2>Her cycle, month by month · visual rhythm.</h2></div><div className="chart-average"><span>Average</span><strong>{averageLength} days</strong></div></div><div className="chart-wrap"><div className="chart-scale"><span>{chartMax}d</span><span>{Math.round((chartMax+chartMin)/2)}d</span><span>{chartMin}d</span></div><div className="chart-area"><div className="chart-average-line" style={{bottom:`${((averageLength-chartMin)/(chartMax-chartMin))*100}%`}}><span>{averageLength} day average</span></div><div className="chart-bars">{chartData.map(item=>{const height=Math.max(8,Math.min(100,((item.length-chartMin)/(chartMax-chartMin))*100));return <div className="chart-column" key={item.id}><div className="chart-value">{item.length}</div><div className="chart-bar-track"><div className="chart-bar" style={{height:`${height}%`}}/></div><span>{new Intl.DateTimeFormat("en-IN",{month:"short"}).format(new Date(item.start+"T00:00:00"))}</span></div>})}</div></div></div><p className="chart-caption">Each bar shows the number of days from one period start to the next. It helps you spot changes in rhythm without turning the history into a spreadsheet.</p></section>}
-        <div className="history-list">{cycles.map((c,i)=>{const length=cycles[i+1]?daysBetween(cycles[i+1].period_start,c.period_start):null;const duration=c.period_end?daysBetween(c.period_start,c.period_end)+1:null;return <article className="history-card" key={c.id}><div className="history-date"><span>{new Intl.DateTimeFormat("en-IN",{month:"short"}).format(new Date(c.period_start+"T00:00:00"))}</span><strong>{new Date(c.period_start+"T00:00:00").getDate()}</strong><small>{new Intl.DateTimeFormat("en-IN",{year:"numeric"}).format(new Date(c.period_start+"T00:00:00"))}</small></div><div className="history-details"><div><strong>{formatDate(c.period_start)}</strong><span>{c.period_end?"Period ended "+formatDate(c.period_end):"End date not recorded"}</span></div><div className="history-metrics">{length&&<div><small>Cycle</small><strong>{length} days</strong></div>}{duration&&<div><small>Period</small><strong>{duration} days</strong></div>}</div></div><button className="delete-btn" disabled={deleting===c.id} onClick={()=>deleteCycle(c.id)} aria-label="Delete cycle">{deleting===c.id?<RefreshCw className="spin" size={15}/>:<Trash2 size={15}/>}</button></article>})}</div></>}
+        {loading ? (
+          <div className="loading"><RefreshCw className="spin" size={20}/> Loading her history…</div>
+        ) : cycles.length === 0 ? (
+          <div className="empty-panel large">
+            <div className="empty-icon">🌷</div>
+            <h2>Her story starts here.</h2>
+            <p>Once you log a period, each month will appear here with its dates and cycle length.</p>
+            <button className="secondary-btn" onClick={openLogger}>Log first period</button>
+          </div>
+        ) : (
+          <>
+            {chartData.length > 0 && (
+              <section className="cycle-chart">
+                <div className="chart-heading">
+                  <div>
+                    <span className="kicker">Visual history</span>
+                    <h2>Her cycle, month by month · visual rhythm.</h2>
+                  </div>
+                  <div className="chart-average">
+                    <span>Average</span>
+                    <strong>{averageLength} days</strong>
+                  </div>
+                </div>
+                <div className="chart-wrap">
+                  <div className="chart-scale">
+                    <span>{chartMax}d</span>
+                    <span>{Math.round((chartMax + chartMin) / 2)}d</span>
+                    <span>{chartMin}d</span>
+                  </div>
+                  <div className="chart-area">
+                    <div className="chart-average-line" style={{bottom:`${((averageLength-chartMin)/(chartMax-chartMin))*100}%`}}>
+                      <span>{averageLength} day average</span>
+                    </div>
+                    <div className="chart-bars">
+                      {chartData.map(item => {
+                        const height = Math.max(8, Math.min(100, ((item.length-chartMin)/(chartMax-chartMin))*100));
+                        return (
+                          <div className="chart-column" key={item.id}>
+                            <div className="chart-value">{item.length}</div>
+                            <div className="chart-bar-track">
+                              <div className="chart-bar" style={{height:`${height}%`}} />
+                            </div>
+                            <span>{new Intl.DateTimeFormat("en-IN",{month:"short"}).format(new Date(item.start+"T00:00:00"))}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+                <p className="chart-caption">Each bar shows the number of days from one period start to the next. It helps you spot changes in rhythm without turning the history into a spreadsheet.</p>
+              </section>
+            )}
+
+            <div className="history-list">
+              {cycles.map((c,i) => {
+                const length = cycles[i+1] ? daysBetween(cycles[i+1].period_start,c.period_start) : null;
+                const duration = c.period_end ? daysBetween(c.period_start,c.period_end)+1 : null;
+                return (
+                  <article className="history-card" key={c.id}>
+                    <div className="history-date">
+                      <span>{new Intl.DateTimeFormat("en-IN",{month:"short"}).format(new Date(c.period_start+"T00:00:00"))}</span>
+                      <strong>{new Date(c.period_start+"T00:00:00").getDate()}</strong>
+                      <small>{new Intl.DateTimeFormat("en-IN",{year:"numeric"}).format(new Date(c.period_start+"T00:00:00"))}</small>
+                    </div>
+                    <div className="history-details">
+                      <div>
+                        <strong>{formatDate(c.period_start)}</strong>
+                        <span>{c.period_end ? "Period ended "+formatDate(c.period_end) : "End date not recorded"}</span>
+                      </div>
+                      <div className="history-metrics">
+                        {length && <div><small>Cycle</small><strong>{length} days</strong></div>}
+                        {duration && <div><small>Period</small><strong>{duration} days</strong></div>}
+                      </div>
+                    </div>
+                    <button className="delete-btn" disabled={deleting===c.id} onClick={()=>deleteCycle(c.id)} aria-label="Delete cycle">
+                      {deleting===c.id ? <RefreshCw className="spin" size={15}/> : <Trash2 size={15}/>}
+                    </button>
+                  </article>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        <div className="history-note">
+          <History size={17}/>
+          <span>Cycle length is calculated from one period start to the next. Predictions are estimates and can naturally vary.</span>
         </div>
-        <div className="history-note"><History size={17}/><span>Cycle length is calculated from one period start to the next. Predictions are estimates and can naturally vary.</span></div>
       </section>}
     </main>
 
