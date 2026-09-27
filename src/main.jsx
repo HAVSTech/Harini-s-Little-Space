@@ -61,12 +61,9 @@ function App(){
   },[]);
 
   async function loadRelationship(userId){
-    const {data,error:queryError}=await supabase.from("relationship_stats").select("id,user_id,intimacy_count").eq("user_id",userId).maybeSingle();
-    if(queryError){setError(queryError.message);return;}
-    if(data){setIntimacyCount(data.intimacy_count||0);return;}
-    const {data:created,error:createError}=await supabase.from("relationship_stats").insert({user_id:userId,intimacy_count:0}).select("id,user_id,intimacy_count").single();
-    if(createError){setError(createError.message);return;}
-    setIntimacyCount(created.intimacy_count||0);
+    const {data,error}=await supabase.from("relationship_stats").upsert({user_id:userId},{onConflict:"user_id"}).select("id,user_id,intimacy_count").single();
+    if(error){setError(error.message);return;}
+    setIntimacyCount(data?.intimacy_count||0);
   }
 
   async function addIntimacyMoment(){
@@ -79,7 +76,7 @@ function App(){
   }
 
   async function loadCycles(userId){
-    const {data,error:queryError}=await supabase.from("period_cycles").select("id,user_id,period_start,period_start_time,period_end,created_at").eq("user_id",userId).order("period_start",{ascending:false});
+    const {data,error:queryError}=await supabase.from("period_cycles").select("id,user_id,period_start,period_start_time,period_end,created_at").order("period_start",{ascending:false});
     if(queryError){setError(queryError.message);setCycles([]);setLoading(false);return;}
     const existing=data||[];
     if(existing.length===0 && !localStorage.getItem("hls-history-seeded") && !localStorage.getItem("hls-history-seeding")){
