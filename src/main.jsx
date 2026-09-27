@@ -291,6 +291,19 @@ function App(){
           </div>
         </section>
 
+        <section className="us-section intimate-memory first-outing-memory">
+          <div className="intimate-glow"/>
+          <div className="us-heading">
+            <span className="kicker">A morning I'll always remember</span>
+            <h2>Our first selfie & first short outing.</h2>
+            <p>1 January 2023 · Around 6:00 AM</p>
+          </div>
+          <div className="romantic-note">
+            <span>♡</span>
+            <p>Just a quiet walk around Spectrum School in the early morning — simple, peaceful, and special because it was one of our first little adventures together.</p>
+          </div>
+        </section>
+
         <section className="us-section closeness-card">
           <div>
             <span className="kicker">Our little moments</span>
