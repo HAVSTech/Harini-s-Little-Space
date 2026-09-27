@@ -80,7 +80,7 @@ using (true)
 with check (true);
 
 insert into public.shared_relationship_stats (id, intimacy_count)
-values (true, (select coalesce(sum(intimacy_count),0) from public.relationship_stats))
+values (true, 0)
 on conflict (id) do nothing;
 
 create or replace function public.increment_shared_intimacy()
