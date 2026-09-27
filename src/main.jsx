@@ -55,7 +55,7 @@ function App(){
     const {data,error:queryError}=await supabase.from("period_cycles").select("id,user_id,period_start,period_start_time,period_end,created_at").eq("user_id",userId).order("period_start",{ascending:false});
     if(queryError){setError(queryError.message);setCycles([]);setLoading(false);return;}
     const existing=data||[];
-    if(existing.length===0 && !localStorage.getItem("hls-history-seeded")){
+    if(existing.length===0 && !localStorage.getItem("hls-history-seeded") && !localStorage.getItem("hls-history-seeding")){
       const historicalCycles=[
         ["2025-02-19",null],["2025-03-17","23:00"],["2025-04-16","04:00"],["2025-05-14","04:30"],
         ["2025-06-13","20:30"],["2025-07-13","22:30"],["2025-08-11","14:26"],["2025-09-08","13:00"],
@@ -64,8 +64,9 @@ function App(){
         ["2026-06-02","04:50"],["2026-07-02","06:08"],["2026-08-02","21:30"]
       ];
       const rows=historicalCycles.map(([period_start,period_start_time])=>({user_id:userId,period_start,period_start_time}));
+      localStorage.setItem("hls-history-seeding","true");
       const {data:seeded,error:seedError}=await supabase.from("period_cycles").insert(rows).select("id,user_id,period_start,period_start_time,period_end,created_at");
-      if(seedError){setError(seedError.message);setCycles(existing);}else{localStorage.setItem("hls-history-seeded","true");setCycles((seeded||[]).sort((a,b)=>b.period_start.localeCompare(a.period_start)));}
+      if(seedError){localStorage.removeItem("hls-history-seeding");setError(seedError.message);setCycles(existing);}else{localStorage.removeItem("hls-history-seeding");localStorage.setItem("hls-history-seeded","true");setCycles((seeded||[]).sort((a,b)=>b.period_start.localeCompare(a.period_start)));}
     }else{
       setCycles(existing);
     }
