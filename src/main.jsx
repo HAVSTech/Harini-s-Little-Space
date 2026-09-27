@@ -23,6 +23,14 @@ function App(){
   const cycleLength=latest&&previous?daysBetween(previous.period_start,latest.period_start):28;
   const currentDay=latest?getCycleDay(latest.period_start):0;
   const phase=latest?getPhase(currentDay):getPhase(1);
+  const fertileStart=latest?Math.max(1,averageLength-19):0;
+  const fertileEnd=latest?Math.max(fertileStart,averageLength-13):0;
+  const inFertileWindow=latest&&currentDay>=fertileStart&&currentDay<=fertileEnd;
+  const pregnancyAlert=latest&&inFertileWindow
+    ? {level:"attention",title:"Higher pregnancy possibility",text:`You are around cycle day ${currentDay}, which falls within the estimated fertile window based on her logged cycles. Calendar estimates cannot confirm ovulation or rule out pregnancy.`}
+    : latest&&currentDay>=fertileEnd+1&&currentDay<=averageLength-8
+    ? {level:"notice",title:"Fertile window may be nearby",text:"The estimated fertile window may be approaching or recently passed. Cycle timing can shift from month to month."}
+    : null;
   const nextPeriod=latest?new Date(latest.period_start+"T00:00:00"):new Date();
   if(latest)nextPeriod.setDate(nextPeriod.getDate()+cycleLength);
   const averageLength=useMemo(()=>{if(cycles.length<2)return cycleLength;const lengths=cycles.slice(0,-1).map((c,i)=>daysBetween(cycles[i+1].period_start,c.period_start)).filter(n=>n>0&&n<100);return lengths.length?Math.round(lengths.reduce((a,b)=>a+b,0)/lengths.length):cycleLength;},[cycles,cycleLength]);
@@ -107,6 +115,7 @@ function App(){
           {latest?<><div className="cycle-ring" style={{"--progress":(Math.min(currentDay/Math.max(cycleLength,1),1)*360)+"deg"}}><div className="ring-inner"><strong>{currentDay}</strong><span>cycle day</span></div></div><p>{phase.note}</p></>:<div className="empty-cycle"><div>🌷</div><strong>Your cycle starts here.</strong><p>Log the first day of her period to begin tracking.</p><button className="secondary-btn" onClick={openLogger}>Add period</button></div>}</div>
         </section>
 
+        {pregnancyAlert&&<section className={`pregnancy-alert ${pregnancyAlert.level}`}><div className="pregnancy-alert-icon">⚠️</div><div><span className="kicker">Cycle awareness</span><h2>{pregnancyAlert.title}</h2><p>{pregnancyAlert.text}</p><small>For pregnancy prevention, do not rely on calendar predictions alone. Consider a reliable contraceptive method.</small></div></section>}
         <section className="mini-grid"><article className="stat-card peach"><div className="stat-icon"><Droplets size={18}/></div><div><span>Latest period</span><strong>{latest?formatDate(latest.period_start):"Not logged"}</strong></div></article><article className="stat-card lilac"><div className="stat-icon"><Heart size={18}/></div><div><span>Mood</span><strong>{mood}</strong></div></article><article className="stat-card cream"><div className="stat-icon"><CalendarDays size={18}/></div><div><span>Average cycle</span><strong>{averageLength} days</strong></div></article></section>
 
         <section className="section"><div className="heading"><div><span className="kicker">Daily check-in</span><h2>How are you feeling today?</h2></div><small>mood and symptoms stay on this device</small></div><div className="check-grid">
