@@ -18,6 +18,7 @@ function App(){
   const [periodStart,setPeriodStart]=useState(""),[periodStartTime,setPeriodStartTime]=useState(""),[periodEnd,setPeriodEnd]=useState(""),[showLogger,setShowLogger]=useState(false);
   const [mood,setMood]=useState(()=>localStorage.getItem("hls-mood")||"🥰"),[selectedSymptoms,setSelectedSymptoms]=useState(()=>JSON.parse(localStorage.getItem("hls-symptoms")||"[]"));
   const [dark,setDark]=useState(()=>localStorage.getItem("hls-theme")==="dark"),[menu,setMenu]=useState(false);
+  const [intimacyCount,setIntimacyCount]=useState(0),[savingIntimacy,setSavingIntimacy]=useState(false);
 
   const latest=cycles[0],previous=cycles[1];
   const cycleLength=latest&&previous?daysBetween(previous.period_start,latest.period_start):28;
@@ -52,12 +53,30 @@ function App(){
         if(signInError){if(mounted)setError("Supabase anonymous sign-in is not enabled yet. Enable it in Authentication → Providers → Anonymous Sign-Ins.");setLoading(false);return;}
         currentUser=signIn.data.user;
       }
-      if(mounted){setUser(currentUser);await loadCycles(currentUser.id);}
+      if(mounted){setUser(currentUser);await Promise.all([loadCycles(currentUser.id),loadRelationship(currentUser.id)]);}
     }
     init();
-    const {data:listener}=supabase.auth.onAuthStateChange((_event,session)=>{if(mounted&&session?.user){setUser(session.user);loadCycles(session.user.id);}});
+    const {data:listener}=supabase.auth.onAuthStateChange((_event,session)=>{if(mounted&&session?.user){setUser(session.user);loadCycles(session.user.id);loadRelationship(session.user.id);}});
     return()=>{mounted=false;listener.subscription.unsubscribe();};
   },[]);
+
+  async function loadRelationship(userId){
+    const {data,error:queryError}=await supabase.from("relationship_stats").select("id,user_id,intimacy_count").eq("user_id",userId).maybeSingle();
+    if(queryError){setError(queryError.message);return;}
+    if(data){setIntimacyCount(data.intimacy_count||0);return;}
+    const {data:created,error:createError}=await supabase.from("relationship_stats").insert({user_id:userId,intimacy_count:0}).select("id,user_id,intimacy_count").single();
+    if(createError){setError(createError.message);return;}
+    setIntimacyCount(created.intimacy_count||0);
+  }
+
+  async function addIntimacyMoment(){
+    if(!user||savingIntimacy)return;
+    setSavingIntimacy(true);setError("");
+    const nextCount=intimacyCount+1;
+    const {data,error:updateError}=await supabase.from("relationship_stats").update({intimacy_count:nextCount,updated_at:new Date().toISOString()}).eq("user_id",user.id).select("intimacy_count").single();
+    if(updateError)setError(updateError.message);else setIntimacyCount(data.intimacy_count);
+    setSavingIntimacy(false);
+  }
 
   async function loadCycles(userId){
     const {data,error:queryError}=await supabase.from("period_cycles").select("id,user_id,period_start,period_start_time,period_end,created_at").eq("user_id",userId).order("period_start",{ascending:false});
@@ -100,7 +119,7 @@ function App(){
     <div className="ambient a1"/><div className="ambient a2"/>
     <header className="topbar">
       <button className="brand brand-button" onClick={()=>nav("today")} aria-label="Go home"><div className="brand-mark"><Heart size={19} fill="currentColor"/></div><div><div className="brand-name">Harini's Little Space</div><div className="brand-sub">a private rhythm, made gently</div></div></button>
-      <nav className={menu?"nav-links open":"nav-links"}><button className={tab==="today"?"active":""} onClick={()=>nav("today")}>Today</button><button className={tab==="history"?"active":""} onClick={()=>nav("history")}>Cycle History</button></nav>
+      <nav className={menu?"nav-links open":"nav-links"}><button className={tab==="today"?"active":""} onClick={()=>nav("today")}>Today</button><button className={tab==="history"?"active":""} onClick={()=>nav("history")}>Cycle History</button><button className={tab==="us"?"active":""} onClick={()=>nav("us")}>Us</button></nav>
       <div className="top-actions"><button className="icon-btn" onClick={()=>setDark(v=>!v)} aria-label="Toggle theme">{dark?<Sun size={18}/>:<Moon size={18}/>}</button><button className="icon-btn menu-btn" onClick={()=>setMenu(v=>!v)} aria-label="Open menu">{menu?<X size={18}/>:<Menu size={18}/>}</button></div>
     </header>
 
@@ -126,7 +145,7 @@ function App(){
         <section className="section quick-history"><div className="heading"><div><span className="kicker">Recent cycles</span><h2>A record that grows with you.</h2></div><button className="text-btn" onClick={()=>nav("history")}>View all <ChevronRight size={15}/></button></div>
           {cycles.length?<div className="recent-list">{cycles.slice(0,3).map((c,i)=><div className="recent-row" key={c.id}><div className="recent-month">{new Intl.DateTimeFormat("en-IN",{month:"short"}).format(new Date(c.period_start+"T00:00:00"))}<strong>{new Date(c.period_start+"T00:00:00").getDate()}</strong></div><div className="recent-main"><strong>{formatDate(c.period_start)}{c.period_start_time&&<em className="history-time">{new Intl.DateTimeFormat("en-IN",{hour:"numeric",minute:"2-digit",hour12:true}).format(new Date(`1970-01-01T${c.period_start_time}`))}</em>}</strong><span>{c.period_end?"Ended "+formatDate(c.period_end):"Currently logged"}</span></div><div className="recent-length">{cycles[i+1]?daysBetween(cycles[i+1].period_start,c.period_start)+" days":i===0?"Current":"·"}</div></div>)}</div>:<div className="empty-panel">No cycle history yet. Add the first period to start building her history.</div>}
         </section>
-      </>:<section className="history-page">
+      </>:tab==="history"?<section className="history-page">
         <div className="history-header"><div><span className="kicker">Your rhythm</span><h1>Cycle history</h1><p>A quiet record of your cycle, month by month.</p></div><button className="primary-btn" onClick={openLogger}><Plus size={16}/> Log period</button></div>
         {loading ? (
           <div className="loading"><RefreshCw className="spin" size={20}/> Loading your history…</div>
@@ -215,6 +234,81 @@ function App(){
         <div className="history-note">
           <History size={17}/>
           <span>Cycle length is calculated from one period start to the next. Predictions are estimates and can naturally vary.</span>
+        </div>
+      </section>:<section className="us-page">
+        <div className="us-hero">
+          <span className="kicker">A little more of us</span>
+          <h1>Some dates are worth<br/><span>keeping forever.</span></h1>
+          <p>Not everything beautiful needs a big explanation. Some things are simply worth remembering.</p>
+        </div>
+
+        <section className="together-card">
+          <div className="together-copy">
+            <span className="kicker">Since 12 October 2022</span>
+            <h2>Still writing the story.</h2>
+            <p>Every ordinary day becomes part of something that started on one very special day.</p>
+          </div>
+          <div className="together-number">
+            <strong>{Math.max(0,daysBetween("2022-10-12",todayString()))}</strong>
+            <span>days together</span>
+          </div>
+        </section>
+
+        <section className="us-section">
+          <div className="us-heading">
+            <span className="kicker">The dates that matter</span>
+            <h2>A few days I'll always remember.</h2>
+          </div>
+          <div className="date-memory-grid">
+            <article className="date-memory">
+              <span>12 Oct 2022</span>
+              <strong>Our love anniversary</strong>
+              <p>The day our story got its own date.</p>
+            </article>
+            <article className="date-memory">
+              <span>21 Oct 2004</span>
+              <strong>Your birthday</strong>
+              <p>The day the person behind all these memories arrived.</p>
+            </article>
+            <article className="date-memory">
+              <span>21 Feb 2005</span>
+              <strong>My birthday</strong>
+              <p>Another date that became part of our story.</p>
+            </article>
+          </div>
+        </section>
+
+        <section className="us-section intimate-memory">
+          <div className="intimate-glow"/>
+          <div className="us-heading">
+            <span className="kicker">A memory close to the heart</span>
+            <h2>The day we became even closer.</h2>
+            <p>3 March 2026</p>
+          </div>
+          <div className="romantic-note">
+            <span>♡</span>
+            <p>Some moments are not about the details. They are about trust, closeness, and the feeling of being completely present with each other.</p>
+          </div>
+        </section>
+
+        <section className="us-section closeness-card">
+          <div>
+            <span className="kicker">Our little moments</span>
+            <h2>A number only we need to understand.</h2>
+            <p>For every moment we've shared that made us feel a little closer.</p>
+          </div>
+          <div className="closeness-counter">
+            <strong>{intimacyCount}</strong>
+            <span>little moments</span>
+            <button className="primary-btn" onClick={addIntimacyMoment} disabled={savingIntimacy||!user}>
+              <Heart size={15} fill="currentColor"/> {savingIntimacy?"Saving…":"Add one"}
+            </button>
+          </div>
+        </section>
+
+        <div className="us-footer-note">
+          <Heart size={16} fill="currentColor"/>
+          <span>More memories waiting to be written.</span>
         </div>
       </section>}
     </main>
