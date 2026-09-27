@@ -270,11 +270,19 @@ function App(){
               <strong>My birthday</strong>
               <p>Another date that became part of our story.</p>
             </article>
-            <article className="date-memory">
-              <span>1 Jan 2023 · 6:00 AM</span>
-              <strong>Our first selfie & first short outing</strong>
-              <p>A quiet early-morning walk around Spectrum School — one of our first little adventures together.</p>
-            </article>
+          </div>
+        </section>
+
+        <section className="us-section intimate-memory first-outing-memory">
+          <div className="intimate-glow"/>
+          <div className="us-heading">
+            <span className="kicker">A morning I'll always remember</span>
+            <h2>Our first selfie & first short outing.</h2>
+            <p>1 January 2023 · Around 6:00 AM</p>
+          </div>
+          <div className="romantic-note">
+            <span>♡</span>
+            <p>Just a quiet walk around Spectrum School in the early morning — simple, peaceful, and special because it was one of our first little adventures together.</p>
           </div>
         </section>
 
