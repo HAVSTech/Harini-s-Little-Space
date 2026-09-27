@@ -15,7 +15,7 @@ function getCycleDay(start){ return Math.max(1,daysBetween(start,todayString())+
 
 function App(){
   const [tab,setTab]=useState("today"),[cycles,setCycles]=useState([]),[loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[deleting,setDeleting]=useState(null),[error,setError]=useState(""),[user,setUser]=useState(null);
-  const [periodStart,setPeriodStart]=useState(""),[periodEnd,setPeriodEnd]=useState(""),[showLogger,setShowLogger]=useState(false);
+  const [periodStart,setPeriodStart]=useState(""),[periodStartTime,setPeriodStartTime]=useState(""),[periodEnd,setPeriodEnd]=useState(""),[showLogger,setShowLogger]=useState(false);
   const [mood,setMood]=useState(()=>localStorage.getItem("hls-mood")||"🥰"),[selectedSymptoms,setSelectedSymptoms]=useState(()=>JSON.parse(localStorage.getItem("hls-symptoms")||"[]"));
   const [dark,setDark]=useState(()=>localStorage.getItem("hls-theme")==="dark"),[menu,setMenu]=useState(false);
 
@@ -52,16 +52,31 @@ function App(){
   },[]);
 
   async function loadCycles(userId){
-    const {data,error:queryError}=await supabase.from("period_cycles").select("id,user_id,period_start,period_end,created_at").eq("user_id",userId).order("period_start",{ascending:false});
-    if(queryError){setError(queryError.message);setCycles([]);}else setCycles(data||[]);
+    const {data,error:queryError}=await supabase.from("period_cycles").select("id,user_id,period_start,period_start_time,period_end,created_at").eq("user_id",userId).order("period_start",{ascending:false});
+    if(queryError){setError(queryError.message);setCycles([]);setLoading(false);return;}
+    const existing=data||[];
+    if(existing.length===0 && !localStorage.getItem("hls-history-seeded")){
+      const historicalCycles=[
+        ["2025-02-19",null],["2025-03-17","23:00"],["2025-04-16","04:00"],["2025-05-14","04:30"],
+        ["2025-06-13","20:30"],["2025-07-13","22:30"],["2025-08-11","14:26"],["2025-09-08","13:00"],
+        ["2025-10-08","13:00"],["2025-11-06","13:00"],["2025-12-06","13:00"],["2026-01-04","14:30"],
+        ["2026-02-02","13:10"],["2026-03-03","15:30"],["2026-04-02","12:00"],["2026-05-01","19:30"],
+        ["2026-06-02","04:50"],["2026-07-02","06:08"],["2026-08-02","21:30"]
+      ];
+      const rows=historicalCycles.map(([period_start,period_start_time])=>({user_id:userId,period_start,period_start_time}));
+      const {data:seeded,error:seedError}=await supabase.from("period_cycles").insert(rows).select("id,user_id,period_start,period_start_time,period_end,created_at");
+      if(seedError){setError(seedError.message);setCycles(existing);}else{localStorage.setItem("hls-history-seeded","true");setCycles((seeded||[]).sort((a,b)=>b.period_start.localeCompare(a.period_start)));}
+    }else{
+      setCycles(existing);
+    }
     setLoading(false);
   }
   async function addCycle(e){
     e.preventDefault();if(!user||!periodStart)return;
     if(periodEnd&&periodEnd<periodStart){setError("Period end date cannot be before the start date.");return;}
     setSaving(true);setError("");
-    const {data,error:insertError}=await supabase.from("period_cycles").insert({user_id:user.id,period_start:periodStart,period_end:periodEnd||null}).select().single();
-    if(insertError)setError(insertError.message);else{setCycles(c=>[data,...c].sort((a,b)=>b.period_start.localeCompare(a.period_start)));setPeriodStart("");setPeriodEnd("");setShowLogger(false);setTab("today");}
+    const {data,error:insertError}=await supabase.from("period_cycles").insert({user_id:user.id,period_start:periodStart,period_start_time:periodStartTime||null,period_end:periodEnd||null}).select().single();
+    if(insertError)setError(insertError.message);else{setCycles(c=>[data,...c].sort((a,b)=>b.period_start.localeCompare(a.period_start)));setPeriodStart("");setPeriodStartTime("");setPeriodEnd("");setShowLogger(false);setTab("today");}
     setSaving(false);
   }
   async function deleteCycle(id){
@@ -69,7 +84,7 @@ function App(){
     const {error:deleteError}=await supabase.from("period_cycles").delete().eq("id",id);
     if(deleteError)setError(deleteError.message);else setCycles(c=>c.filter(x=>x.id!==id));setDeleting(null);
   }
-  const openLogger=()=>{setPeriodStart(todayString());setPeriodEnd("");setShowLogger(true);};
+  const openLogger=()=>{const now=new Date();setPeriodStart(todayString());setPeriodStartTime(`${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`);setPeriodEnd("");setShowLogger(true);};
   const nav=next=>{setTab(next);setMenu(false);window.scrollTo({top:0,behavior:"smooth"});};
 
   return <div className="app-shell">
@@ -99,7 +114,7 @@ function App(){
         </div></section>
 
         <section className="section quick-history"><div className="heading"><div><span className="kicker">Recent cycles</span><h2>A record that grows with her.</h2></div><button className="text-btn" onClick={()=>nav("history")}>View all <ChevronRight size={15}/></button></div>
-          {cycles.length?<div className="recent-list">{cycles.slice(0,3).map((c,i)=><div className="recent-row" key={c.id}><div className="recent-month">{new Intl.DateTimeFormat("en-IN",{month:"short"}).format(new Date(c.period_start+"T00:00:00"))}<strong>{new Date(c.period_start+"T00:00:00").getDate()}</strong></div><div className="recent-main"><strong>{formatDate(c.period_start)}</strong><span>{c.period_end?"Ended "+formatDate(c.period_end):"Currently logged"}</span></div><div className="recent-length">{cycles[i+1]?daysBetween(cycles[i+1].period_start,c.period_start)+" days":i===0?"Current":"·"}</div></div>)}</div>:<div className="empty-panel">No cycle history yet. Add the first period to start building her history.</div>}
+          {cycles.length?<div className="recent-list">{cycles.slice(0,3).map((c,i)=><div className="recent-row" key={c.id}><div className="recent-month">{new Intl.DateTimeFormat("en-IN",{month:"short"}).format(new Date(c.period_start+"T00:00:00"))}<strong>{new Date(c.period_start+"T00:00:00").getDate()}</strong></div><div className="recent-main"><strong>{formatDate(c.period_start)}{c.period_start_time&&<em className="history-time">{new Intl.DateTimeFormat("en-IN",{hour:"numeric",minute:"2-digit",hour12:true}).format(new Date(`1970-01-01T${c.period_start_time}`))}</em>}</strong><span>{c.period_end?"Ended "+formatDate(c.period_end):"Currently logged"}</span></div><div className="recent-length">{cycles[i+1]?daysBetween(cycles[i+1].period_start,c.period_start)+" days":i===0?"Current":"·"}</div></div>)}</div>:<div className="empty-panel">No cycle history yet. Add the first period to start building her history.</div>}
         </section>
       </>:<section className="history-page">
         <div className="history-header"><div><span className="kicker">Her rhythm</span><h1>Cycle history</h1><p>A quiet record of every month.</p></div><button className="primary-btn" onClick={openLogger}><Plus size={16}/> Log period</button></div>
@@ -169,7 +184,7 @@ function App(){
                     </div>
                     <div className="history-details">
                       <div>
-                        <strong>{formatDate(c.period_start)}</strong>
+                        <strong>{formatDate(c.period_start)}{c.period_start_time&&<em className="history-time">{new Intl.DateTimeFormat("en-IN",{hour:"numeric",minute:"2-digit",hour12:true}).format(new Date(`1970-01-01T${c.period_start_time}`))}</em>}</strong>
                         <span>{c.period_end ? "Period ended "+formatDate(c.period_end) : "End date not recorded"}</span>
                       </div>
                       <div className="history-metrics">
@@ -196,7 +211,7 @@ function App(){
 
     <footer className="footer"><span>Made with a little extra care for Harini ♡</span><span>Harini's Little Space · {new Date().getFullYear()}</span></footer>
 
-    {showLogger&&<div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setShowLogger(false)}}><form className="modal" onSubmit={addCycle}><div className="modal-header"><div><span className="kicker">Monthly check-in</span><h2>Log her period</h2></div><button type="button" className="icon-btn" onClick={()=>setShowLogger(false)}><X size={17}/></button></div><p className="modal-copy">Add the actual period dates. Her cycle history and future estimates will update automatically.</p><label><span>Period started</span><input required type="date" value={periodStart} max={todayString()} onChange={e=>setPeriodStart(e.target.value)}/></label><label><span>Period ended <em>optional</em></span><input type="date" value={periodEnd} max={todayString()} min={periodStart||undefined} onChange={e=>setPeriodEnd(e.target.value)}/></label><div className="modal-actions"><button type="button" className="secondary-btn" onClick={()=>setShowLogger(false)}>Cancel</button><button className="primary-btn" disabled={saving||!user}>{saving?<><RefreshCw className="spin" size={15}/> Saving…</>:<><Heart size={15}/> Save period</>}</button></div></form></div>}
+    {showLogger&&<div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setShowLogger(false)}}><form className="modal" onSubmit={addCycle}><div className="modal-header"><div><span className="kicker">Monthly check-in</span><h2>Log her period</h2></div><button type="button" className="icon-btn" onClick={()=>setShowLogger(false)}><X size={17}/></button></div><p className="modal-copy">Add the actual period dates. Her cycle history and future estimates will update automatically.</p><label><span>Period started</span><input required type="date" value={periodStart} max={todayString()} onChange={e=>setPeriodStart(e.target.value)}/></label><label><span>Started at <em>optional</em></span><input type="time" value={periodStartTime} onChange={e=>setPeriodStartTime(e.target.value)}/></label><label><span>Period ended <em>optional</em></span><input type="date" value={periodEnd} max={todayString()} min={periodStart||undefined} onChange={e=>setPeriodEnd(e.target.value)}/></label><div className="modal-actions"><button type="button" className="secondary-btn" onClick={()=>setShowLogger(false)}>Cancel</button><button className="primary-btn" disabled={saving||!user}>{saving?<><RefreshCw className="spin" size={15}/> Saving…</>:<><Heart size={15}/> Save period</>}</button></div></form></div>}
   </div>;
 }
 createRoot(document.getElementById("root")).render(<React.StrictMode><App/></React.StrictMode>);
