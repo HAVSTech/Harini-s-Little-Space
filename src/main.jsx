@@ -53,15 +53,15 @@ function App(){
         if(signInError){if(mounted)setError("Supabase anonymous sign-in is not enabled yet. Enable it in Authentication → Providers → Anonymous Sign-Ins.");setLoading(false);return;}
         currentUser=signIn.data.user;
       }
-      if(mounted){setUser(currentUser);await Promise.all([loadCycles(),loadRelationship(currentUser.id)]);}
+      if(mounted){setUser(currentUser);await Promise.all([loadCycles(),loadRelationship()]);}
     }
     init();
-    const {data:listener}=supabase.auth.onAuthStateChange((_event,session)=>{if(mounted&&session?.user){setUser(session.user);loadCycles();loadRelationship(session.user.id);}});
+    const {data:listener}=supabase.auth.onAuthStateChange((_event,session)=>{if(mounted&&session?.user){setUser(session.user);loadCycles();loadRelationship();}});
     return()=>{mounted=false;listener.subscription.unsubscribe();};
   },[]);
 
-  async function loadRelationship(userId){
-    const {data,error}=await supabase.from("relationship_stats").upsert({user_id:userId},{onConflict:"user_id"}).select("id,user_id,intimacy_count").single();
+  async function loadRelationship(){
+    const {data,error}=await supabase.from("shared_relationship_stats").select("intimacy_count").eq("id",true).maybeSingle();
     if(error){setError(error.message);return;}
     setIntimacyCount(data?.intimacy_count||0);
   }
@@ -69,9 +69,8 @@ function App(){
   async function addIntimacyMoment(){
     if(!user||savingIntimacy)return;
     setSavingIntimacy(true);setError("");
-    const nextCount=intimacyCount+1;
-    const {data,error:updateError}=await supabase.from("relationship_stats").update({intimacy_count:nextCount,updated_at:new Date().toISOString()}).eq("user_id",user.id).select("intimacy_count").single();
-    if(updateError)setError(updateError.message);else setIntimacyCount(data.intimacy_count);
+    const {data,error:updateError}=await supabase.rpc("increment_shared_intimacy");
+    if(updateError)setError(updateError.message);else setIntimacyCount(Number(data)||0);
     setSavingIntimacy(false);
   }
 
