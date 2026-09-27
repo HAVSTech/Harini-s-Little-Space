@@ -43,3 +43,35 @@ using (auth.uid() = user_id);
 
 -- Anonymous sign-ins must be enabled in:
 -- Supabase Dashboard → Authentication → Sign In / Providers → Anonymous Sign-Ins.
+
+create table if not exists public.relationship_stats (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null unique references auth.users(id) on delete cascade,
+  intimacy_count integer not null default 0 check (intimacy_count >= 0),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists relationship_stats_user_idx
+  on public.relationship_stats(user_id);
+
+alter table public.relationship_stats enable row level security;
+
+drop policy if exists "Users can view their own relationship stats" on public.relationship_stats;
+create policy "Users can view their own relationship stats"
+on public.relationship_stats for select
+to authenticated
+using (auth.uid() = user_id);
+
+drop policy if exists "Users can add their own relationship stats" on public.relationship_stats;
+create policy "Users can add their own relationship stats"
+on public.relationship_stats for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+drop policy if exists "Users can edit their own relationship stats" on public.relationship_stats;
+create policy "Users can edit their own relationship stats"
+on public.relationship_stats for update
+to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
