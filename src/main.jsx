@@ -9,7 +9,10 @@ const symptoms = ["Cramps","Bloating","Headache","Backache","Fatigue","Tendernes
 const formatLong = value => new Intl.DateTimeFormat("en-IN",{weekday:"long",day:"numeric",month:"long"}).format(new Date(value));
 const formatDate = value => value ? new Intl.DateTimeFormat("en-IN",{day:"numeric",month:"short",year:"numeric"}).format(new Date(value+"T00:00:00")) : "·";
 const daysBetween = (a,b) => Math.round((new Date(b+"T00:00:00")-new Date(a+"T00:00:00"))/86400000);
-const todayString = () => new Date().toISOString().slice(0,10);
+const todayString = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+};
 function getPhase(day){ if(day<=5)return{name:"Menstrual",icon:"🌸",note:"Slow down, rest, and be gentle with yourself."}; if(day<=13)return{name:"Follicular",icon:"🌱",note:"Energy may gradually start to rise."}; if(day<=16)return{name:"Ovulation",icon:"✨",note:"A brighter, more social part of the cycle for many people."}; return{name:"Luteal",icon:"🌙",note:"A softer phase · listen to what your body asks for."}; }
 function getCycleDay(start){ return Math.max(1,daysBetween(start,todayString())+1); }
 
@@ -39,7 +42,14 @@ function App(){
   const chartMin=chartData.length?Math.max(1,Math.min(...chartData.map(x=>x.length))-4):24;
   const chartMax=chartData.length?Math.max(...chartData.map(x=>x.length),averageLength)+4:32;
 
+  const [dateTick,setDateTick]=useState(0);
   useEffect(()=>{document.documentElement.dataset.theme=dark?"dark":"light";localStorage.setItem("hls-theme",dark?"dark":"light");localStorage.setItem("hls-mood",mood);localStorage.setItem("hls-symptoms",JSON.stringify(selectedSymptoms));},[dark,mood,selectedSymptoms]);
+  useEffect(()=>{
+    const updateToday=()=>setDateTick(v=>v+1);
+    updateToday();
+    const timer=setInterval(updateToday,60000);
+    return()=>clearInterval(timer);
+  },[]);
 
   useEffect(()=>{
     let mounted=true;
