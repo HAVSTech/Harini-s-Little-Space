@@ -17,10 +17,11 @@ create index if not exists period_cycles_user_start_idx
 alter table public.period_cycles enable row level security;
 
 drop policy if exists "Users can view their own cycles" on public.period_cycles;
-create policy "Users can view their own cycles"
+drop policy if exists "Authenticated users can view all cycle history" on public.period_cycles;
+create policy "Authenticated users can view all cycle history"
 on public.period_cycles for select
 to authenticated
-using (auth.uid() = user_id);
+using (true);
 
 drop policy if exists "Users can add their own cycles" on public.period_cycles;
 create policy "Users can add their own cycles"
